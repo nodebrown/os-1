@@ -1,0 +1,5 @@
+os-image
+kernel/kernel.bin
+kernel/kernel_entry.bin
+kernel/kernel
+boot/bootloader
