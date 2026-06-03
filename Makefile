@@ -4,20 +4,40 @@ os-image: boot/bootloader kernel/kernel
 	cat boot/bootloader kernel/kernel > os-image
 
 boot/bootloader: boot/boot.asm
-	nasm boot/boot.asm -f bin -o boot/bootloader
+	nasm -f bin boot/boot.asm -o boot/bootloader
 
-kernel/kernel: kernel/kernel.bin kernel/kernel_entry.bin
-	/opt/cross/bin/i686-elf-ld -o kernel/kernel -Ttext 0x1000 kernel/kernel_entry.bin kernel/kernel.bin kernel/*.o --oformat binary
+kernel/kernel: \
+	kernel/kernel_entry.o \
+	kernel/kernel.o \
+	kernel/display.o \
+	kernel/lowlevel.o
+	ld -m elf_i386 \
+		-Ttext 0x1000 \
+		-o kernel/kernel \
+		kernel/kernel_entry.o \
+		kernel/kernel.o \
+		kernel/display.o \
+		kernel/lowlevel.o \
+		--oformat binary
 
-kernel/kernel.bin: kernel/kernel.c
-	/opt/cross/bin/i686-elf-gcc -ffreestanding -c kernel/kernel.c -o kernel/kernel.bin
+kernel/kernel_entry.o: kernel/kernel_entry.asm
+	nasm -f elf32 kernel/kernel_entry.asm -o kernel/kernel_entry.o
 
-kernel/kernel_entry.bin: kernel/kernel_entry.asm
-	nasm kernel/kernel_entry.asm -f elf -o kernel/kernel_entry.bin
+kernel/kernel.o: kernel/kernel.c
+	gcc -m32 -ffreestanding -fno-pie -fno-pic -c kernel/kernel.c -o kernel/kernel.o
+
+kernel/display.o: kernel/display.c
+	gcc -m32 -ffreestanding -fno-pie -fno-pic  -c kernel/display.c -o kernel/display.o
+
+kernel/lowlevel.o: kernel/lowlevel.c
+	gcc -m32 -ffreestanding -fno-pic -fno-pic -c kernel/lowlevel.c -o kernel/lowlevel.o
 
 start: os-image
 	qemu-system-x86_64 os-image
 
-clean: kernel/*.bin kernel/kernel boot/bootloader
-	rm -f kernel/*.bin kernel/kernel boot/bootloader 
-
+clean:
+	rm -f \
+		boot/bootloader \
+		os-image \
+		kernel/kernel \
+		kernel/*.o
